@@ -1,0 +1,44 @@
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <script src="lib/p5.js"></script>
+    <script src="lib/p5.dom.js"></script>
+    <script src="lib/p5.sound.js"></script>
+
+    <script src="sketch.js"></script>
+    <script src="core/ConnectionGene.js"></script>
+    <script src="core/ConnectionHistory.js"></script>
+    <script src="core/Node.js"></script>
+    <script src="core/Player.js"></script>
+    <script src="core/Population.js"></script>
+    <script src="core/Species.js"></script>
+    <script src="core/Genome.js"></script>
+    <script src="utils/Chart.js"></script>
+    <script src="utils/Counter.js"></script>
+    <script src="utils/Indicators.js"></script>
+    <script src="data/btcusdt_5m.js"></script>
+  </head>
+  <body>
+    <div id="main">
+      <div id="canvas"></div>
+    </div>
+
+    <script>
+      //center the canvas
+      var tempString =
+        '' +
+        (window.innerWidth * 0.9 - 1026 - window.innerWidth * 0.9 * 0.08) / 2 +
+        'px';
+      document.getElementById('main').style.marginLeft = tempString;
+
+      window.onresize = function (event) {
+        var tempString =
+          '' +
+          (window.innerWidth * 0.9 - 1026 - window.innerWidth * 0.9 * 0.08) /
+            2 +
+          'px';
+        document.getElementById('main').style.marginLeft = tempString;
+      };
+    </script>
+  </body>
+</html>

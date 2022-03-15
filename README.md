@@ -1,1 +1,1 @@
-# neat-trading-visualizer
+# NEAT Template JavaScript
