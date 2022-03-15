@@ -2,7 +2,7 @@
 
 Watch a neuro evolution algorithm in action trading bitcoin.
 
-![demo](./demo/preview.png)
+![demo](./preview.png)
 
 ## Demo
 
