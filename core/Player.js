@@ -5,8 +5,8 @@ function truncate(x, precision) {
 const FEES = 0.0004;
 
 var indicatorInputs = {
-  EMA21: true,
-  EMA50: true,
+  EMA21: false,
+  EMA50: false,
   RSI: false,
   PRICE_CHANGE: true,
   AVG_PRICE_CHANGE: true,
@@ -14,9 +14,9 @@ var indicatorInputs = {
   AVG_LOSS: true,
   VOLUME: true,
   VOLUME_OSC: true,
-  STD14: true,
-  STD21: true,
-  STD50: true,
+  STD14: false,
+  STD21: false,
+  STD50: false,
 };
 
 class Player {
@@ -37,7 +37,8 @@ class Player {
     // Goals
     this.minTradeDuration = 2;
     this.maxTradeDuration = 6;
-    this.maxDrawdown = 0.05; // 0.05 %
+    this.maxDrawdown = 0.05; // 0.01 = 0.01 %
+    this.winRate = null; // 0.01 = 1 %
 
     this.counter = new Counter();
 
@@ -50,6 +51,10 @@ class Player {
     this.dead = false;
     this.score = 0; // profit of the trader
     this.gen = 0;
+
+    // history of trades
+    this.history = []; // { openTime, closeTime, side, openPrice, closePrice, size, pnl }[]
+    this.tempTrade = null;
 
     // Brain
     this.genomeInputs =
@@ -76,7 +81,6 @@ class Player {
     }
   }
 
-  //---------------------------------------------------------------------------------------------------------------------------------------------------------
   show() {
     let candleWidth = CHART_WIDTH / (numberBarsTraining + numberBarsTest);
 
@@ -108,7 +112,7 @@ class Player {
         CHART_Y - 20
       );
       text(
-        `${this.position.type}!`,
+        `${this.position.type}`,
         CHART_X + candleIndex * candleWidth,
         CHART_Y - 40
       );
@@ -128,10 +132,13 @@ class Player {
       this.dead = true;
 
     // Remember the good traders
-    if (this.totalTrades > 5) {
+    if (
+      this.winRate &&
+      this.lifespan >= (numberBarsTraining - candleStartIndex) / 2
+    ) {
       let wr = this.winningTrades / this.totalTrades;
-      if (wr > 0.7) {
-        this.score *= 2;
+      if (wr < this.winRate) {
+        this.dead = true;
       }
     }
 
@@ -335,7 +342,6 @@ class Player {
     ].filter((v) => v !== null);
   }
 
-  //gets the output of the this.brain then converts them to actions
   think() {
     var max = 0;
     var maxIndex = 0;
@@ -374,6 +380,12 @@ class Player {
         size: this.risk * this.balance,
       };
       this.balance *= 1 - FEES;
+      this.tempTrade = {
+        openTime: new Date(candles[candleIndex].ot),
+        openPrice: candles[candleIndex].o,
+        side: 'Long',
+        size: this.risk * this.balance,
+      };
     }
   }
 
@@ -385,6 +397,12 @@ class Player {
         size: this.risk * this.balance,
       };
       this.balance *= 1 - FEES;
+      this.tempTrade = {
+        openTime: new Date(candles[candleIndex].ot),
+        openPrice: candles[candleIndex].o,
+        side: 'Short',
+        size: this.risk * this.balance,
+      };
     }
   }
 
@@ -396,6 +414,16 @@ class Player {
       this.totalTrades++;
       this.position = null;
       if (pnlWithFees > 0) this.winningTrades++;
+
+      this.tempTrade = {
+        ...this.tempTrade,
+        closeTime: new Date(candles[candleIndex].ot),
+        closePrice: candles[candleIndex].o,
+        pnl: truncate(pnlWithFees, 2),
+      };
+
+      this.history.push(this.tempTrade);
+      this.tempTrade = null;
     }
   }
 
@@ -408,6 +436,10 @@ class Player {
       return pnl;
     }
     return 0;
+  }
+
+  showHistory() {
+    console.log(this.history);
   }
 
   //returns a clone of this player with the same brian

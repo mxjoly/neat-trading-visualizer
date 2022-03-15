@@ -1,16 +1,16 @@
 var nextConnectionNo = 1000;
-var populationSize = 500;
+var populationSize = 50;
 var population;
 var speed = 60;
 
 var showBest = true; //true if only show the best of the previous generation
 var runBest = false; //true if replaying the best ever game
 
-var startDate = new Date('2021', '12', '1', '0', '0', '0');
-var endDate = new Date('2022', '3', '1', '0', '0', '0');
-var numberTotalBars = 1000;
-var numberBarsTraining = Math.round(numberTotalBars * 0.7);
-var numberBarsTest = numberTotalBars - numberBarsTraining;
+var startDate = new Date('2022', '1', '1', '0', '0', '0');
+var endDate = new Date('2022', '1', '4', '0', '0', '0');
+var numberTotalBars;
+var numberBarsTraining;
+var numberBarsTest;
 var testPeriod = false; // Test the network on the test period
 
 var candleStartIndex = 51; // Wait to have all the values for the indicators
@@ -19,54 +19,60 @@ var candleIndex = candleStartIndex;
 var symbol = 'BTCUSDT';
 var resolution = '5';
 var chart;
-var candles = [];
+var candles = []; // { ot, ct, o, h, l, c, v }
 
 var showBrain = false;
 
 var indicators = {};
 
+var pause = false;
+
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 
 var MIN_WIDTH_CANDLE = 3;
-var CANVAS_WIDTH = (numberBarsTraining + numberBarsTest) * MIN_WIDTH_CANDLE;
+var CANVAS_WIDTH;
 var CANVAS_HEIGHT = 720;
 
 let CHART_WIDTH_RATIO = 1; // ratio of the canvas w
 let CHART_HEIGHT_RATIO = 0.5; // ratio of the canvas h
-let CHART_WIDTH = CANVAS_WIDTH;
-let CHART_HEIGHT = CANVAS_HEIGHT * CHART_HEIGHT_RATIO;
-let CHART_X = 0 + CANVAS_WIDTH * ((1 - CHART_WIDTH_RATIO) / 2);
-let CHART_Y = 0 + CANVAS_HEIGHT * ((1 - CHART_HEIGHT_RATIO) / 2);
+let CHART_WIDTH;
+let CHART_HEIGHT;
+let CHART_X;
+let CHART_Y;
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 
 function preload() {
-  // let url = `https://finnhub.io/api/v1/crypto/candle?symbol=BINANCE:${symbol}&resolution=${resolution}&from=${
-  //   startDate.getTime() / 1000
-  // }&to=${endDate.getTime() / 1000}&token=c8l3b0aad3icvur3mbbg`;
-  // httpGet(url, 'json', false, (res) => {
-  //   let data = JSON.parse(res);
-  //   let totalBars = numberBarsTraining + numberBarsTest;
-  //   if (data.c.length - totalBars >= 0) {
-  //     for (let i = data.c.length - totalBars; i < data.c.length; i++) {
-  //       candles.push({
-  //         o: data.o[i],
-  //         h: data.h[i],
-  //         l: data.l[i],
-  //         c: data.c[i],
-  //         v: data.v[i],
-  //       });
-  //     }
-  //   }
-  // });
+  // Load all the candles on the date range
+  for (let i = data.length - 1; i >= 0; i--) {
+    var { ot, ct } = data[i];
+    if (ot >= startDate.getTime() && ct <= endDate.getTime()) {
+      candles.push(data[i]);
+    } else if (ot > endDate.getTime()) {
+      break;
+    }
+  }
 
-  candles = data.slice(0, numberTotalBars);
+  // Define the duration of training period and test period
+  numberTotalBars = candles.length;
+  numberBarsTraining = Math.round(numberTotalBars * 0.7);
+  numberBarsTest = numberTotalBars - numberBarsTraining;
+
+  // Init the canvas and chart dim
+  CANVAS_WIDTH = (numberBarsTraining + numberBarsTest) * MIN_WIDTH_CANDLE;
+  CHART_WIDTH = CANVAS_WIDTH;
+  CHART_HEIGHT = CANVAS_HEIGHT * CHART_HEIGHT_RATIO;
+  CHART_X = 0 + CANVAS_WIDTH * ((1 - CHART_WIDTH_RATIO) / 2);
+  CHART_Y = 0 + CANVAS_HEIGHT * ((1 - CHART_HEIGHT_RATIO) / 2);
+
+  // Initialize the indicators
+
   var closes = candles.map((c) => c.c);
   var volumes = candles.map((c) => c.v);
 
   indicators.emaDiff21 = emaDiff(closes, 21);
   indicators.emaDiff50 = emaDiff(closes, 50);
-  // indicators.rsi = rsi(candles, 14);
+  indicators.rsi = rsi(candles, 14);
   indicators.priceChanges = priceChanges(candles);
   indicators.avgPriceChanges = averagePriceChanges(candles, 14);
   indicators.avgGains = averageGains(candles, 14);
@@ -85,6 +91,8 @@ function setup() {
 }
 
 function draw() {
+  if (pause) return;
+
   if (candles.length === 0) return;
 
   if (candleIndex < numberBarsTraining + numberBarsTest) candleIndex++;
@@ -122,12 +130,29 @@ function showBestEverPlayer() {
 function drawToScreen() {
   background(33, 33, 33);
   chart.draw();
+  drawCandleInfo();
   drawBrain();
   writeInfo();
 }
 
+function drawCandleInfo() {
+  var startX = 20;
+  var startY = 20;
+  var size = 14;
+  fill('white');
+  textAlign(LEFT);
+  textSize(size);
+
+  if (candleIndex < candles.length) {
+    text(`Open: ${candles[candleIndex].o}`, startX, startY + size * 1);
+    text(`Close: ${candles[candleIndex].c}`, startX, startY + size * 3);
+    text(`High: ${candles[candleIndex].h}`, startX, startY + size * 5);
+    text(`Low: ${candles[candleIndex].l}`, startX, startY + size * 7);
+  }
+}
+
 function drawBrain() {
-  var startX = -100;
+  var startX = 100;
   var startY = 20;
   var w = 500;
   var h = 200;
@@ -160,9 +185,12 @@ function writeInfo() {
 
 function keyPressed() {
   switch (key) {
-    case ' ':
+    case 'S':
       // toggle showBest
       showBest = !showBest;
+      break;
+    case 'B': // run the best genome
+      runBest = !runBest;
       break;
     case 'A': // speed up frame rate
       speed += 10;
@@ -174,11 +202,11 @@ function keyPressed() {
         frameRate(speed);
       }
       break;
-    case 'B': // run the best genome
-      runBest = !runBest;
-      break;
     case 'T': // Test the neural network on the tet period
       testPeriod = !testPeriod;
+      break;
+    case 'P': // Test the neural network on the tet period
+      pause = !pause;
       break;
   }
 }

@@ -53,11 +53,11 @@ class Chart {
     let deltaPrice = abs(maxPrice - minPrice);
     let tickHeight = CHART_HEIGHT / deltaPrice;
 
-    let yLow = map(candle.l, minPrice, maxPrice, 0, CHART_HEIGHT);
-    let yBodyLow = map(
+    let yHigh = map(candle.h, maxPrice, minPrice, 0, CHART_HEIGHT);
+    let yBodyHigh = map(
       min(candle.o, candle.c),
-      minPrice,
       maxPrice,
+      min,
       0,
       CHART_HEIGHT
     );
@@ -67,14 +67,14 @@ class Chart {
 
     rect(
       CHART_X + n * candleWidth + candleWidth / 2,
-      CHART_HEIGHT - CHART_Y + yLow,
+      CHART_HEIGHT - CHART_Y + yHigh,
       1,
       abs(candle.h - candle.l) * tickHeight
     );
 
     rect(
       CHART_X + n * candleWidth + 1,
-      CHART_Y + yBodyLow,
+      CHART_Y + yBodyHigh,
       candleWidth - 1,
       abs(candle.o - candle.c) * tickHeight
     );
